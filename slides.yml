@@ -1,0 +1,26 @@
+basepath: "/home/truls/uni/kantine/slides/slides"
+randomize: Yes
+bg-music: "/home/truls/uni/kantine/slides/slideshow/intermission.mp3"
+
+defaults:
+  delay: 20
+  frequency: 1
+
+
+slides:
+  - file: "pollen.png"
+    caption: "Pollen foo bar"
+    delay: 1
+    frequency: 3
+
+  - file: "pulemand.png"
+    caption: "Puleman bar"
+    delay: 1
+    frequency: 1
+  
+  - file: "dikulan_drift.jpg"
+    caption: "dikulan"
+    delay: 1
+    frequency: 2
+
+
