@@ -63,6 +63,10 @@ class Main(QMainWindow):
         self.caption.setGeometry(self.caption_target_geom(self.screen_geom))
         self.caption.show()
 
+        # Move cursor out of the way
+        QCursor().setPos(self.screen_geom.width(),
+                                self.screen_geom.height())
+
 
     def caption_target_geom(self, screen_geom):
         sw = screen_geom.width()
