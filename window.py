@@ -4,8 +4,6 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.phonon import *
 
-from control import NewSlideEvent
-
 import time
 
 class Main(QMainWindow):
@@ -49,10 +47,12 @@ class Main(QMainWindow):
 
         self.video = Phonon.VideoPlayer(self)
         self.video.setGeometry(self.screen_geom)
-        src = Phonon.MediaSource("../slides/slides/old/Torsdagssøster.m2t")
-        self.video.load(src)
-        self.video.finished.connect(self.video_done)
-        self.video.hide()
+        #src = Phonon.MediaSource("../slides/slides/old/Torsdagssøster.m2t")
+        #self.video.load(src)
+        #print("Video sizeHint: " + str(self.video.sizeHint()))
+        #self.video.finished.connect(self.video_done)
+        #self.video.hide()
+
 
         self.caption = QLabel(self)
         font = QFont()
@@ -64,34 +64,63 @@ class Main(QMainWindow):
         self.caption.show()
 
 
-    def video_done(self):
-        print("video done")
-
-        sli
     def caption_target_geom(self, screen_geom):
         sw = screen_geom.width()
         sh = screen_geom.height()
-        th = sw*0.10
+        th = sw*0.04
         ret = QRect(0, sh - th, sw, th)
-        print(ret)
+        print("caption target geom", str(ret))
         return ret
 
     def load_image(self, image):
         self.next_pixmap = QPixmap()
-        self.next_pixmap.load("../../../Samba Top Can Bottle.JPG")
-        self.next_pixmap = self.next_pixmap.scaledToWidth(self.screen_geom.width())
+        self.next_pixmap.load(image)
+        self.next_pixmap = self.next_pixmap.scaled(self.screen_geom.size(),
+                                                   aspectRatioMode = Qt.KeepAspectRatio)
         print("loaded image")
     
     def show_image(self):
+        self.video.hide()
+        print ("Show image")
+        target_geom = QRect(int((self.screen_geom.width() / 2) -
+                                self.next_pixmap.width() / 2),
+                            int((self.screen_geom.height() / 2) -
+                                (self.next_pixmap.height() / 2)),
+                            self.next_pixmap.width(),
+                            self.next_pixmap.height())
+        
         self.pixmap.swap(self.next_pixmap)
         self.image.setPixmap(self.pixmap)
+        self.image.setGeometry(target_geom)
+        self.image.show()
+        print ("Exit show image")
     
-    def load_video(self, video):
-        self.image.hide()
-        self.video.show()
-        self.video.play()
+    def load_video(self, video, on_finish):
+        vp = Phonon.VideoPlayer(self)
+        vp.finished.connect(on_finish)
+        # This will cause the video to autoscale nicely within the screen
+        vp.setGeometry(self.screen_geom)
+        src = Phonon.MediaSource(video)
+        vp.load(src)
+        vp.play()
+        print("Before show: " + str(vp.sizeHint()))
+        vp.show()
+        print("After show: " + str(vp.sizeHint()))
+        #self.image.hide()
+        #self.caption.hide()
+        #src = Phonon.MediaSource(video)
+        #self.video.load(src)
+        #self.video.show()
+
+        #self.video.play()
+        #print(self.video.sizeHint())
+        #print("Loaded video")
+        
         self.caption.show()
-        print(self.video.frameGeometry())
+        #return vp
+
+    def set_caption(self, caption):
+        self.caption.setText(caption)
     
     def show_video(self):
         pass

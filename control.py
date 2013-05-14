@@ -3,41 +3,107 @@ from PyQt4.QtCore import *
 
 from config import Config
 from window import *
+import mimetypes
+import os.path
+from threading import Lock, Thread
+import time
 
-class NewSlideEvent(QEvent):
-    def __init__(self, slide, parent = None):
-        pass
+IMAGE, VIDEO = range(2)
 
-    def type(self):
-        return 1000
+class Director(QThread):
+    def __init__(self, control):
+        super(QThread, self).__init__()
 
-    
+        self.control = control
+
+    def run(self):
+        while True:
+            self.control.lock.acquire()
+            print("Lock acquired")
+            n  = next(self.control.slides)
+            print(n)
+            mtype = self.control._mimetype(n['file'])
+            print(mtype)
+            if mtype == IMAGE:
+                self.control.change_slide.emit(n)
+                time.sleep(n['delay'])
+                try:
+                    self.control.lock.release()
+                except:
+                    print("WARNING: Unable to release lock: syncronization issues")
+                print("Lock released")
+            elif mtype == VIDEO:
+                self.control.change_slide.emit(n)
+            else:
+                self.control.lock.release()
+                
+                continue
+
 
 class Control(QObject):
-    
+    change_slide = pyqtSignal(object)
+
     def __init__(self, window, config, parent = None):
+        super(Control, self).__init__(parent)
+
         assert isinstance(config, Config)
-        assert isinstance(window, Window)
+        #assert isinstance(window, Main)
         
         self.config = config
         self.window = window
 
-        self.next_slide = None
+        self.slides = self.config.slidesgen()
 
-        self.timer = QTimer()
-        self.timer.setSingleShot(True)
-    
-    def next_slide(self):
-        slef.next_slide = self.config.next()
-        n = self.config.next()
-        if slidetype(n) is Video:
-            self.switchvideo(next_slide)
+        # Initialize mimetypes
+        mimetypes.init()
+
+        self.change_slide.connect(self.next_slide)
+        self.window.video.finished.connect(self.video_finished)
+
+        self.lock = Lock()
+
+
+    def _mimetype(self, path):
+        # FIMXE: Move MIME logic to somewhere else
+        try:
+            mimetype = mimetypes.types_map[os.path.splitext(path)[1]]
+        except KeyError:
+            print("Could not find mimetype for extension")
+            return -1
+            
+        print("Found mimetype: ", mimetype)
+
+        if "image/" in mimetype:
+            return IMAGE
+        elif "video/" in mimetype:
+            return VIDEO
         else:
-            self.switchimage()
+            print("Unknown mimetype")
 
-        self.timer.setInterval(n['interval'])
-        self.timer.start()
+    def start_show(self):
+        self.thread.start()
+
+    def next_slide(self, slide):
+
+        n = slide
+        print(n)
         
-    def event(self, event):
-        super(QObject, self).event(event)
+        mtype = self._mimetype(n['file'])
+        
+        if mtype == IMAGE:
+            self.window.load_image(n['file'])
+            self.window.show_image()
+           # QTimer.singleShot(n['delay'] * 1000, self.video_finished)
+        elif mtype == VIDEO:            
+            vidobj = self.window.load_video(n['file'], self.video_finished)
+            #vidobj.finished.connect(self.video_finished)
+
+        self.window.set_caption(n['caption'])
+              
+
+    def video_finished(self):
+        self.window.video.stop()
+        self.lock.release()
+        print("video finished")
+
 

@@ -8,8 +8,6 @@ from threading import Lock
 
 # FIXME: The inotify modify event appears to be triggered twice. Figure out why this is
 
-# TODO: Add support for the frequency config option
-
 class FileEventHandler(pyinotify.ProcessEvent):
     def __init__(self, parent):
         self.parent = parent
@@ -17,15 +15,13 @@ class FileEventHandler(pyinotify.ProcessEvent):
 
     def process_IN_MODIFY(self, e):
         if e.name == self.parent.config_basename:
-            print("Reloading config")
-            self.parent.lock.acquire(True)
+            print("Config will be reloaded on next slide change...")
+            # FIXME: We get a deadlock here sometimes. Possibly because the modify event triggers twice
+            self.parent.lock.acquire()
+            print("Reloading config...")
             self.parent.read_config()
             self.parent.lock.release()
         
-#class DictWrapper(object):
-#    def __init__(self, d):
-#        self.dict = 
-
 class Config(object):
     
     def __init__(self, f):
@@ -56,36 +52,68 @@ class Config(object):
         except yaml.parser.ParserError as e:
             print("Config file parse error " + str(e))
             return
+
+        self.slides = self.config["slides"]
+        self.slides = [self._fill_defaults(el) for el in self.slides]       
+        self.slides = sum([self._expand_directory(el) for el in self.slides], [])
+        self.slides = sum([self._expand_path(el) for el in self.slides], [])
+        self.slides = sum([[el]*el['frequency'] for el in self.slides], [])
         
-        self.slides = sum([[el]*el['frequency'] for el in self.config['slides']], [])
-        # Expand filenames:
-        self.slides = [self._expand_path(el) for el in self.slides]
-        #self.slides = sum([self._expand_directory(el) for el in self.slides if
-        #                   el.has_key("directory")], [])
         print(self.slides)
-        if self.config['randomize']:
+        
+        if self.config["randomize"]:
+            print("Randomizing")
             random.shuffle(self.slides)
         print(self.slides)
 
         self.reloaded = True
     
-    def next(self):
+    def slidesgen(self):
         while True:
             for s in self.slides:
-                self.lock.acquire(True)
+                self.lock.acquire()
                 if self.reloaded:
                     self.reloaded = False
                     self.lock.release()
                     break
                 yield s
                 self.lock.release()
+            if self.config["randomize"]:
+                random.shuffle(self.slides)
                 
     def _expand_path(self, el):
-        el["file"] = os.path.join(self.config['basepath'], el["file"])
+        el["file"] = os.path.join(self.config["basepath"], el["file"])
+        if not os.path.exists(el["file"]):
+            print("Warning: File", el["file"], "Doesn't exists")
+            return []
+        return [el]
+
+    def _fill_defaults(self, el):
+        for k in ["delay", "frequency", "caption"]:
+            if not k in el:
+                el[k] = self.config["defaults"][k]
         return el
 
     def _expand_directory(self, el):
-        pass
+        if not "directory" in el:
+            return [el]
+        l = []
+        d = el['directory']
+        d_tmp = os.path.join(self.config['basepath'], d)
+        try:
+            dirlist = os.listdir(d_tmp)
+            #print(d_tmp, dirlist)
+        except OSError:
+            print("Directory", d_tmp, "not found")
+            return []
+        for f in dirlist:
+            nl = {'file': os.path.join(d, f),
+                  'caption': el['caption'],
+                  'delay': el['delay'],
+                  'frequency': el['frequency']}
+            l.append(nl)
+        #print(l)
+        return l
     
     def end(self):
         self.notifier.stop()
