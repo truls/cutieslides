@@ -47,12 +47,6 @@ class Main(QMainWindow):
 
         self.video = Phonon.VideoPlayer(self)
         self.video.setGeometry(self.screen_geom)
-        #src = Phonon.MediaSource("../slides/slides/old/Torsdagssøster.m2t")
-        #self.video.load(src)
-        #print("Video sizeHint: " + str(self.video.sizeHint()))
-        #self.video.finished.connect(self.video_done)
-        #self.video.hide()
-
 
         self.caption = QLabel(self)
         font = QFont()
@@ -65,7 +59,7 @@ class Main(QMainWindow):
 
         # Move cursor out of the way
         QCursor().setPos(self.screen_geom.width(),
-                                self.screen_geom.height())
+                         self.screen_geom.height())
 
 
     def caption_target_geom(self, screen_geom):
