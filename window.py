@@ -100,6 +100,13 @@ class Main(QMainWindow):
         print ("Exit show image")
     
     def load_video(self, video, on_finish):
+        if not self.current_video is None:
+            # Orphan and dereference old video player
+            # Adding too many video player widgets will fuck up
+            # your program after a while
+            self.current_video.parent.removeChild(self.current_video)
+            del self.current_video
+
         vp = Phonon.VideoPlayer(self)
         vp.finished.connect(on_finish)
         # This will cause the video to autoscale nicely within the screen
@@ -110,18 +117,7 @@ class Main(QMainWindow):
         print("Before show: " + str(vp.sizeHint()))
         vp.show()
         print("After show: " + str(vp.sizeHint()))
-        #self.image.hide()
-        #self.caption.hide()
-        #src = Phonon.MediaSource(video)
-        #self.video.load(src)
-        #self.video.show()
-
-        #self.video.play()
-        #print(self.video.sizeHint())
-        #print("Loaded video")
-        
-        self.caption.show()
-        #return vp
+        self.current_video = vp
 
     def set_caption(self, caption):
         self.caption.setText(caption)
