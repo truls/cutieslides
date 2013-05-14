@@ -102,6 +102,7 @@ class Control(QObject):
               
 
     def video_finished(self):
+        print("video_finished triggered")
         self.window.video.stop()
         self.lock.release()
         print("video finished")
