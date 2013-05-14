@@ -98,7 +98,7 @@ class Main(QMainWindow):
             # Orphan and dereference old video player
             # Adding too many video player widgets will fuck up
             # your program after a while
-            self.current_video.parent.removeChild(self.current_video)
+            self.removeChild(self.current_video)
             del self.current_video
 
         vp = Phonon.VideoPlayer(self)
