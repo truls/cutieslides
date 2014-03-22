@@ -78,7 +78,14 @@ class Main(QMainWindow):
         print("loaded image")
     
     def show_image(self):
-        self.video.hide()
+        if not self.current_video is None:
+            self.current_video.hide()
+            # Orphan and dereference old video player
+            # Adding too many video player widgets will fuck up
+            # your program after a while
+            self.current_video.setParent(None)
+            self.current_video = None
+        #self.video.hide()
         print ("Show image")
         target_geom = QRect(int((self.screen_geom.width() / 2) -
                                 self.next_pixmap.width() / 2),
@@ -95,9 +102,7 @@ class Main(QMainWindow):
     
     def load_video(self, video, on_finish):
         if not self.current_video is None:
-            # Orphan and dereference old video player
-            # Adding too many video player widgets will fuck up
-            # your program after a while
+            self.current_video.hide()
             self.current_video.setParent(None)
             del self.current_video
 

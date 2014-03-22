@@ -2,6 +2,7 @@
 
 import sys
 import signal
+import argparse
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from window import *
@@ -15,6 +16,8 @@ main = None
 
 def main():
     
+
+
     cf = Config("slides.yml")
     
     app = QApplication(sys.argv)

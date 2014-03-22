@@ -6,6 +6,10 @@ import os
 import random
 from threading import Lock
 
+# TODO:
+# Add inotify listeners for "directory" entries so that files added
+# to a directory will show up in slides automatically
+
 # FIXME: The inotify modify event appears to be triggered twice. Figure out why this is
 
 class FileEventHandler(pyinotify.ProcessEvent):
@@ -52,11 +56,13 @@ class Config(object):
         except yaml.parser.ParserError as e:
             print("Config file parse error " + str(e))
             return
-
+    
+        # TODO: Rewrite parsing of config array completely. This organization doesn't make sense anymore
         self.slides = self.config["slides"]
         self.slides = [self._fill_defaults(el) for el in self.slides]       
         self.slides = sum([self._expand_directory(el) for el in self.slides], [])
         self.slides = sum([self._expand_path(el) for el in self.slides], [])
+        #self.slides = sum([self._expand_rss for en in self.slides], [])
         self.slides = sum([[el]*el['frequency'] for el in self.slides], [])
         
         print(self.slides)
@@ -82,6 +88,8 @@ class Config(object):
                 random.shuffle(self.slides)
                 
     def _expand_path(self, el):
+        if not "file" in el:
+            return [el]
         el["file"] = os.path.join(self.config["basepath"], el["file"])
         if not os.path.exists(el["file"]):
             print("Warning: File", el["file"], "Doesn't exists")
@@ -104,6 +112,7 @@ class Config(object):
             dirlist = os.listdir(d_tmp)
             #print(d_tmp, dirlist)
         except OSError:
+            # FIXME: Print contents of OSError exception
             print("Directory", d_tmp, "not found")
             return []
         for f in dirlist:
