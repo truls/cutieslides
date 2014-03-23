@@ -4,7 +4,36 @@ import pyinotify
 import yaml
 import os
 import random
+from copy import deepcopy
 from threading import Lock
+from PyQt4.QtCore import QObject, pyqtSignal
+from resource import FilesystemResource, UrlResource
+
+class PropertyBag(object):
+    
+    def __init__(self, initval = {}):
+        # Avoid triggering __setattr__
+        self.__dict__["_val"] = initval
+        print(self._val)
+
+    def update(self, other):
+        self._val.update(other)
+
+    def clone(self, **kwargs):
+        new = deepcopy(self._val)
+        if len(kwargs) > 0:
+            for k, v in kwargs.items():
+                new[k] = v
+        
+        return PropertyBag(new)
+
+    def __getattr__(self, k):
+        if not k in self._val:
+            raise AttributeError
+        return self._val[k]
+
+    def __setattr__(self, k, v):
+        self._val[k] = v
 
 # TODO:
 # Add inotify listeners for "directory" entries so that files added
@@ -26,14 +55,20 @@ class FileEventHandler(pyinotify.ProcessEvent):
             self.parent.read_config()
             self.parent.lock.release()
         
-class Config(object):
+class Config(QObject):
+
+    refres = pyqtSignal()
     
-    def __init__(self, f):
+    def __init__(self, f, handlers):
+        QObject.__init__(self)
         self.configfile = f
 
         self.config_dict = {}
         self.slides = []
+        self.resources = []
 
+        self.handlers = handlers
+        
         self.reloaded = False
         self.lock = Lock()
 
@@ -56,6 +91,36 @@ class Config(object):
         except yaml.parser.ParserError as e:
             print("Config file parse error " + str(e))
             return
+
+        defaults = PropertyBag(self.config["defaults"])
+        
+        self.slides = []
+        slides = self.config["slides"]
+
+        for s in slides:
+            if 'url' in s and not 'file' in s and not 'directory' in s:
+                url = s['url']
+                # FIXME: clone is ugly. Change to using a chain of
+                # PropertyBags. That would also allow us to change
+                # default settings globally
+                props = defaults.clone()
+                del s['url']
+                props.update(s)
+                self.resources.append(UrlResource(url, self.handlers,
+                                                  properties = props))
+            elif 'file' in s and not 'url' in s and not 'directory' in s:
+                f = s['file']
+                props = defaults.clone()
+                del s['file']
+                props.update(s)
+                self.resources.append(FileResource(file, properties = props))
+            elif 'directory' in s and not 'url' in s and not 'file' in s:
+                d = s['directory']
+                props = defaults.clone()
+                del d['directory']
+                props.update(s)
+                self.resources.append(DirectoryResource(file, properties = props))
+            
     
         # TODO: Rewrite parsing of config array completely. This organization doesn't make sense anymore
         self.slides = self.config["slides"]
@@ -102,27 +167,6 @@ class Config(object):
                 el[k] = self.config["defaults"][k]
         return el
 
-    def _expand_directory(self, el):
-        if not "directory" in el:
-            return [el]
-        l = []
-        d = el['directory']
-        d_tmp = os.path.join(self.config['basepath'], d)
-        try:
-            dirlist = os.listdir(d_tmp)
-            #print(d_tmp, dirlist)
-        except OSError:
-            # FIXME: Print contents of OSError exception
-            print("Directory", d_tmp, "not found")
-            return []
-        for f in dirlist:
-            nl = {'file': os.path.join(d, f),
-                  'caption': el['caption'],
-                  'delay': el['delay'],
-                  'frequency': el['frequency']}
-            l.append(nl)
-        #print(l)
-        return l
     
     def end(self):
         self.notifier.stop()

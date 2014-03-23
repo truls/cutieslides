@@ -7,7 +7,9 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from window import *
 from control import *
+from handler import Handler
 from config import Config
+from Downloader import Downloader
 
 
 import time
@@ -17,8 +19,9 @@ main = None
 def main():
     
 
-
-    cf = Config("slides.yml")
+    handler = Handler()
+    downloader = Downloader()
+    cf = Config("slides.yml", handler)
     
     app = QApplication(sys.argv)
 

@@ -1,12 +1,14 @@
 
 from PyQt4.QtCore import *
 
+from resource import types
 from config import Config
 from window import *
 import mimetypes
 import os.path
 from threading import Lock, Thread
 import time
+
 
 IMAGE, VIDEO = range(2)
 
@@ -65,20 +67,6 @@ class Control(QObject):
 
     def _mimetype(self, path):
         # FIMXE: Move MIME logic to somewhere else
-        try:
-            mimetype = mimetypes.types_map[os.path.splitext(path)[1]]
-        except KeyError:
-            print("Could not find mimetype for extension")
-            return -1
-            
-        print("Found mimetype: ", mimetype)
-
-        if "image/" in mimetype:
-            return IMAGE
-        elif "video/" in mimetype:
-            return VIDEO
-        else:
-            print("Unknown mimetype")
 
     def start_show(self):
         self.thread.start()
